@@ -32,6 +32,7 @@
 html,
 body {
   height: 100%;
+  overflow-x: hidden;
 }
 
 body {
@@ -282,14 +283,18 @@ button {
 }
 
 /* ---------- Notes view ---------- */
+/* El editor siempre se muestra como panel superpuesto (no solo en mobile):
+   .notes-browser es la grilla de tarjetas, .editor-pane se desliza encima
+   cuando hay una nota abierta. Ver notes-view.js - la clase que alterna esto
+   es .notes-layout.show-editor. */
 .notes-layout {
-  display: grid;
-  grid-template-columns: 300px 1fr;
+  position: relative;
   height: 100%;
+  overflow: hidden;
 }
 
-.notes-sidebar {
-  border-right: 1px solid var(--line);
+.notes-browser {
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -303,13 +308,24 @@ button {
   border-bottom: 1px solid var(--line);
 }
 
-#notes-search {
+#notes-search,
+.select-control {
   padding: 0.55rem 0.8rem;
   border-radius: var(--radius-sm);
   border: 1px solid var(--line);
   background: var(--paper);
   color: var(--ink);
   font-size: 0.9rem;
+}
+
+.toolbar-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.toolbar-row .type-filters {
+  flex: 1;
 }
 
 .type-filters {
@@ -332,61 +348,125 @@ button {
   color: var(--paper);
 }
 
-.notes-list {
-  list-style: none;
+.notes-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  align-items: start;
+  gap: 1rem;
   margin: 0;
-  padding: 0.5rem;
+  padding: 1rem;
   overflow-y: auto;
   flex: 1;
 }
 .notes-list-empty {
+  grid-column: 1 / -1;
   color: var(--ink-soft);
   padding: 1rem;
   font-size: 0.9rem;
   text-align: center;
 }
 
-.note-item {
+.note-card {
   width: 100%;
   text-align: left;
-  background: transparent;
-  border: none;
-  border-radius: var(--radius-sm);
-  padding: 0.6rem 0.7rem;
-  display: grid;
-  gap: 0.15rem;
-  cursor: pointer;
-  margin-bottom: 0.15rem;
-}
-.note-item:hover {
   background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  padding: 0.9rem;
+  display: grid;
+  gap: 0.4rem;
+  align-content: start;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: transform 0.08s ease, box-shadow 0.15s ease, border-color 0.15s ease;
 }
-.note-item.is-active {
-  background: var(--accent-soft);
+.note-card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-md);
 }
-.note-item-title {
+.note-card.is-active {
+  border-color: var(--accent);
+}
+.note-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+}
+.note-card-title {
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.95rem;
   color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .note-item-type {
-  font-size: 0.72rem;
+  font-size: 0.68rem;
   color: var(--ink-soft);
   text-transform: uppercase;
   letter-spacing: 0.03em;
+  background: var(--accent-soft);
+  color: var(--accent-dark);
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  flex-shrink: 0;
 }
-.note-item-preview {
-  font-size: 0.8rem;
+.note-card-preview {
+  font-size: 0.82rem;
   color: var(--ink-soft);
-  white-space: nowrap;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
   overflow: hidden;
-  text-overflow: ellipsis;
+  min-height: 2.6em;
+}
+.note-card-date {
+  font-size: 0.72rem;
+  color: var(--ink-soft);
+}
+
+.fab {
+  position: fixed;
+  right: calc(1.25rem + env(safe-area-inset-right, 0px));
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: 1.7rem;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  cursor: pointer;
+  box-shadow: var(--shadow-md);
+  z-index: 10;
+}
+.fab:hover {
+  background: var(--accent-dark);
+}
+.notes-layout.show-editor .fab {
+  display: none;
 }
 
 .editor-pane {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: absolute;
+  inset: 0;
+  background: var(--paper);
+  transform: translateX(100%);
+  transition: transform 0.2s ease;
+}
+.notes-layout.show-editor .editor-pane {
+  transform: translateX(0);
+}
+.notes-layout.show-editor .notes-browser {
+  visibility: hidden;
 }
 .editor-empty {
   flex: 1;
@@ -408,9 +488,6 @@ button {
   border-bottom: 1px solid var(--line);
   flex-wrap: wrap;
 }
-.only-mobile {
-  display: none;
-}
 .note-title-input {
   flex: 1;
   min-width: 150px;
@@ -425,13 +502,22 @@ button {
 .note-title-input:focus {
   outline: none;
 }
-.note-type-select {
+.type-toggle {
+  display: flex;
+  gap: 0.25rem;
+}
+.type-toggle-btn {
   border: 1px solid var(--line);
+  background: transparent;
   border-radius: var(--radius-sm);
-  padding: 0.4rem 0.6rem;
-  background: var(--paper-raised);
-  color: var(--ink);
-  font-size: 0.85rem;
+  padding: 0.45rem 0.6rem;
+  font-size: 1.05rem;
+  line-height: 1;
+  cursor: pointer;
+}
+.type-toggle-btn.is-active {
+  background: var(--accent-soft);
+  border-color: var(--accent);
 }
 
 .form-hint {
@@ -842,36 +928,11 @@ button {
 
 /* ---------- Responsive ---------- */
 @media (max-width: 780px) {
-  .notes-layout,
   .learn-layout {
     grid-template-columns: 1fr;
   }
-  .notes-sidebar,
   .learn-list {
     border-right: none;
-  }
-
-  .notes-layout {
-    position: relative;
-  }
-  .notes-sidebar {
-    height: 100%;
-  }
-  .editor-pane {
-    position: absolute;
-    inset: 0;
-    background: var(--paper);
-    transform: translateX(100%);
-    transition: transform 0.2s ease;
-  }
-  .notes-layout.show-editor-mobile .editor-pane {
-    transform: translateX(0);
-  }
-  .notes-layout.show-editor-mobile .notes-sidebar {
-    visibility: hidden;
-  }
-  .only-mobile {
-    display: inline-flex;
   }
 
   .learn-detail {
@@ -879,5 +940,39 @@ button {
   }
   .practice-row {
     grid-template-columns: 1fr;
+  }
+
+  .notes-grid {
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+    gap: 0.7rem;
+    padding: 0.75rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-header {
+    flex-wrap: wrap;
+    gap: 0.5rem 0.75rem;
+    padding: 0.6rem 0.9rem;
+  }
+  .brand span {
+    display: none;
+  }
+  .tabs {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .tab-btn {
+    padding: 0.45rem 0.6rem;
+    font-size: 0.9rem;
+  }
+  .user-menu {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.4rem;
+  }
+  .user-menu .btn:not(.icon-btn) {
+    padding: 0.5rem 0.7rem;
+    font-size: 0.85rem;
   }
 }

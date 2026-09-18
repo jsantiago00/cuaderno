@@ -3,6 +3,7 @@ import { getFormById, buildTemplateContent } from '../forms-data.js';
 import { countLineSyllables } from '../syllables.js';
 
 export const TYPE_LABELS = { cancion: 'Canción', poema: 'Poema', otro: 'Otro' };
+const TYPE_ICONS = { cancion: '🎵', poema: '📝', otro: '📄' };
 const SAVE_DELAY = 700;
 
 const state = {
@@ -14,6 +15,7 @@ const state = {
   saveTimer: null,
   search: '',
   typeFilter: 'todos',
+  sortBy: 'updatedAt', // 'updatedAt' | 'createdAt'
 };
 
 function el(container, selector) {
@@ -28,49 +30,58 @@ export function mountNotesView(container, user) {
 
   container.innerHTML = `
     <div class="notes-layout">
-      <aside class="notes-sidebar">
+      <div class="notes-browser">
         <div class="sidebar-toolbar">
           <input type="search" id="notes-search" placeholder="Buscar en tus escritos..." />
-          <div class="new-note-group">
-            <button id="new-note-btn" class="btn btn-primary btn-block">+ Nuevo escrito</button>
-          </div>
-          <div class="type-filters" role="tablist">
-            <button class="chip is-active" data-type="todos">Todos</button>
-            <button class="chip" data-type="cancion">Canciones</button>
-            <button class="chip" data-type="poema">Poemas</button>
-            <button class="chip" data-type="otro">Otros</button>
+          <div class="toolbar-row">
+            <div class="type-filters" role="tablist">
+              <button class="chip is-active" data-type="todos">Todos</button>
+              <button class="chip" data-type="cancion">Canciones</button>
+              <button class="chip" data-type="poema">Poemas</button>
+              <button class="chip" data-type="otro">Otros</button>
+            </div>
+            <select id="notes-sort" class="select-control">
+              <option value="updatedAt">Última edición</option>
+              <option value="createdAt">Fecha de creación</option>
+            </select>
           </div>
         </div>
-        <ul id="notes-list" class="notes-list"></ul>
-      </aside>
+        <div id="notes-grid" class="notes-grid"></div>
+      </div>
       <section class="editor-pane" id="editor-pane">
         <div class="editor-empty" id="editor-empty">
           <p>Elegí un escrito de la lista o creá uno nuevo.</p>
         </div>
       </section>
+      <button id="new-note-fab" class="fab" title="Nuevo escrito" aria-label="Nuevo escrito">+</button>
     </div>
   `;
 
   el(container, '#notes-search').addEventListener('input', (e) => {
     state.search = e.target.value.toLowerCase();
-    renderList(container);
+    renderGrid(container);
   });
 
   container.querySelectorAll('.type-filters .chip').forEach((btn) => {
     btn.addEventListener('click', () => {
       state.typeFilter = btn.dataset.type;
       container.querySelectorAll('.type-filters .chip').forEach((b) => b.classList.toggle('is-active', b === btn));
-      renderList(container);
+      renderGrid(container);
     });
   });
 
-  el(container, '#new-note-btn').addEventListener('click', () => handleCreate(container));
+  el(container, '#notes-sort').addEventListener('change', (e) => {
+    state.sortBy = e.target.value;
+    renderGrid(container);
+  });
+
+  el(container, '#new-note-fab').addEventListener('click', () => handleCreate(container));
 
   state.unsubscribe = subscribeNotes(
     user.uid,
     (notes) => {
       state.notes = notes;
-      renderList(container);
+      renderGrid(container);
       if (state.selectedId && !state.localPatch) {
         const current = notes.find((n) => n.id === state.selectedId);
         if (current) renderEditor(container, current);
@@ -94,13 +105,26 @@ export function unmountNotesView() {
   state.localPatch = null;
 }
 
+function timestampMs(ts) {
+  // Un serverTimestamp() recién escrito llega null hasta que el server lo
+  // confirma - lo tratamos como "ahora" para que la nota no salte al final
+  // de la lista durante ese instante.
+  return ts?.toMillis ? ts.toMillis() : Date.now();
+}
+
+function formatDate(ts) {
+  if (!ts?.toDate) return 'Guardando...';
+  return ts.toDate().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 function filteredNotes() {
-  return state.notes.filter((n) => {
+  const filtered = state.notes.filter((n) => {
     if (state.typeFilter !== 'todos' && n.type !== state.typeFilter) return false;
     if (!state.search) return true;
     const haystack = `${n.title} ${n.content}`.toLowerCase();
     return haystack.includes(state.search);
   });
+  return filtered.sort((a, b) => timestampMs(b[state.sortBy]) - timestampMs(a[state.sortBy]));
 }
 
 function displayNote(note) {
@@ -110,34 +134,36 @@ function displayNote(note) {
   return note;
 }
 
-function renderList(container) {
-  const list = el(container, '#notes-list');
+function renderGrid(container) {
+  const grid = el(container, '#notes-grid');
   const notes = filteredNotes();
 
   if (!notes.length) {
-    list.innerHTML = `<li class="notes-list-empty">No hay escritos todavía. ¡Empezá uno nuevo!</li>`;
+    grid.innerHTML = `<p class="notes-list-empty">No hay escritos todavía. ¡Empezá uno nuevo!</p>`;
     return;
   }
 
-  list.innerHTML = notes
+  grid.innerHTML = notes
     .map((rawNote) => {
       const note = displayNote(rawNote);
       const title = note.title?.trim() || 'Sin título';
-      const preview = (note.content || '').replace(/\s+/g, ' ').trim().slice(0, 60);
+      const preview = (note.content || '').replace(/\s+/g, ' ').trim().slice(0, 140);
       const isActive = note.id === state.selectedId;
+      const dateLabel = state.sortBy === 'createdAt' ? `Creado: ${formatDate(note.createdAt)}` : `Editado: ${formatDate(note.updatedAt)}`;
       return `
-        <li>
-          <button class="note-item ${isActive ? 'is-active' : ''}" data-id="${note.id}">
-            <span class="note-item-title">${escapeHtml(title)}</span>
-            <span class="note-item-type type-${note.type}">${TYPE_LABELS[note.type] || 'Otro'}</span>
-            <span class="note-item-preview">${escapeHtml(preview)}</span>
-          </button>
-        </li>
+        <button class="note-card ${isActive ? 'is-active' : ''}" data-id="${note.id}">
+          <span class="note-card-header">
+            <span class="note-card-title">${escapeHtml(title)}</span>
+            <span class="note-item-type">${TYPE_LABELS[note.type] || 'Otro'}</span>
+          </span>
+          <span class="note-card-preview">${escapeHtml(preview)}</span>
+          <span class="note-card-date">${dateLabel}</span>
+        </button>
       `;
     })
     .join('');
 
-  list.querySelectorAll('.note-item').forEach((btn) => {
+  grid.querySelectorAll('.note-card').forEach((btn) => {
     btn.addEventListener('click', () => selectNote(container, btn.dataset.id));
   });
 }
@@ -148,7 +174,7 @@ function selectNote(container, id) {
   state.localPatch = null;
   const note = state.notes.find((n) => n.id === id);
   if (note) renderEditor(container, note);
-  renderList(container);
+  renderGrid(container);
 }
 
 async function handleCreate(container) {
@@ -172,17 +198,21 @@ export async function createNoteFromTemplate(form) {
 function renderEditor(container, note) {
   const pane = el(container, '#editor-pane');
   const form = note.formId ? getFormById(note.formId) : null;
+  let currentType = note.type;
 
   pane.innerHTML = `
     <div class="editor-toolbar">
-      <button class="btn btn-ghost only-mobile" id="back-to-list">← Volver</button>
+      <button class="btn btn-ghost icon-btn" id="back-to-list" title="Volver" aria-label="Volver">←</button>
       <input type="text" id="note-title" class="note-title-input" placeholder="Título" value="${escapeAttr(note.title || '')}" />
-      <select id="note-type" class="note-type-select">
-        <option value="cancion" ${note.type === 'cancion' ? 'selected' : ''}>Canción</option>
-        <option value="poema" ${note.type === 'poema' ? 'selected' : ''}>Poema</option>
-        <option value="otro" ${note.type === 'otro' ? 'selected' : ''}>Otro</option>
-      </select>
-      <button class="btn btn-ghost btn-danger" id="delete-note">Eliminar</button>
+      <div class="type-toggle" role="group" aria-label="Tipo de escrito">
+        ${Object.keys(TYPE_LABELS)
+          .map(
+            (t) =>
+              `<button type="button" class="type-toggle-btn ${t === currentType ? 'is-active' : ''}" data-type-toggle="${t}" title="${TYPE_LABELS[t]}" aria-label="${TYPE_LABELS[t]}">${TYPE_ICONS[t]}</button>`,
+          )
+          .join('')}
+      </div>
+      <button class="btn btn-ghost btn-danger icon-btn" id="delete-note" title="Eliminar" aria-label="Eliminar">🗑️</button>
     </div>
     ${form ? `<div class="form-hint">Escribiendo con la forma <strong>${form.name}</strong> · ${form.scheme}</div>` : ''}
     <textarea id="note-content" class="note-content-textarea" placeholder="Empezá a escribir...">${escapeHtml(note.content || '')}</textarea>
@@ -190,11 +220,9 @@ function renderEditor(container, note) {
     <div class="save-status" id="save-status"></div>
   `;
 
-  pane.classList.add('has-note');
-  document.querySelector('.notes-layout')?.classList.add('show-editor-mobile');
+  document.querySelector('.notes-layout')?.classList.add('show-editor');
 
   const titleInput = el(pane, '#note-title');
-  const typeSelect = el(pane, '#note-type');
   const contentArea = el(pane, '#note-content');
   const saveStatus = el(pane, '#save-status');
 
@@ -203,9 +231,9 @@ function renderEditor(container, note) {
       id: note.id,
       title: titleInput.value,
       content: contentArea.value,
-      type: typeSelect.value,
+      type: currentType,
     };
-    renderList(container);
+    renderGrid(container);
     if (form && form.template.syllableTargets) updateSyllableHints(pane, form);
     saveStatus.textContent = 'Guardando…';
     if (state.saveTimer) clearTimeout(state.saveTimer);
@@ -213,8 +241,15 @@ function renderEditor(container, note) {
   }
 
   titleInput.addEventListener('input', onEdit);
-  typeSelect.addEventListener('change', onEdit);
   contentArea.addEventListener('input', onEdit);
+
+  pane.querySelectorAll('[data-type-toggle]').forEach((btn) => {
+    btn.addEventListener('click', () => {
+      currentType = btn.dataset.typeToggle;
+      pane.querySelectorAll('[data-type-toggle]').forEach((b) => b.classList.toggle('is-active', b === btn));
+      onEdit();
+    });
+  });
 
   el(pane, '#delete-note').addEventListener('click', async () => {
     if (!confirm('¿Eliminar este escrito? No se puede deshacer.')) return;
@@ -222,14 +257,12 @@ function renderEditor(container, note) {
     state.selectedId = null;
     state.localPatch = null;
     pane.innerHTML = `<div class="editor-empty"><p>Elegí un escrito de la lista o creá uno nuevo.</p></div>`;
+    document.querySelector('.notes-layout')?.classList.remove('show-editor');
   });
 
-  const backBtn = el(pane, '#back-to-list');
-  if (backBtn) {
-    backBtn.addEventListener('click', () => {
-      document.querySelector('.notes-layout')?.classList.remove('show-editor-mobile');
-    });
-  }
+  el(pane, '#back-to-list').addEventListener('click', () => {
+    document.querySelector('.notes-layout')?.classList.remove('show-editor');
+  });
 
   if (form && form.template.syllableTargets) updateSyllableHints(pane, form);
 }
