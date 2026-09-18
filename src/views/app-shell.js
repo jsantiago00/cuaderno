@@ -1,4 +1,5 @@
 import { signOutUser, linkGoogleAccount } from '../auth.js';
+import { openSettingsModal } from './settings-view.js';
 import { mountNotesView, unmountNotesView, createNoteFromTemplate } from './notes-view.js';
 import { mountLearnView, unmountLearnView } from './learn-view.js';
 
@@ -21,6 +22,7 @@ export function mountAppShell(root, user) {
           <button class="tab-btn" data-tab="learn" role="tab" aria-selected="false">Aprender formas</button>
         </nav>
         <div class="user-menu">
+          <button id="settings-btn" class="btn btn-ghost icon-btn" title="Configuración" aria-label="Configuración">⚙️</button>
           ${user.photoURL ? `<img class="avatar" src="${user.photoURL}" alt="" referrerpolicy="no-referrer" />` : `<span class="avatar avatar-fallback">${(user.displayName || user.email || '?')[0].toUpperCase()}</span>`}
           ${user.isAnonymous ? `<button id="link-google-btn" class="btn btn-ghost" title="Vincular con Google para sincronizar">Vincular con Google</button>` : ''}
           <button id="logout-btn" class="btn btn-ghost" title="Cerrar sesión">Salir</button>
@@ -43,6 +45,10 @@ export function mountAppShell(root, user) {
 
   document.querySelectorAll('.tab-btn').forEach((btn) => {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
+  });
+
+  document.getElementById('settings-btn').addEventListener('click', () => {
+    openSettingsModal();
   });
 
   document.getElementById('logout-btn').addEventListener('click', () => {

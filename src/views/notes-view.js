@@ -2,7 +2,7 @@ import { subscribeNotes, createNote, updateNote, deleteNote } from '../notes.js'
 import { getFormById, buildTemplateContent } from '../forms-data.js';
 import { countLineSyllables } from '../syllables.js';
 
-const TYPE_LABELS = { cancion: 'Canción', poema: 'Poema', otro: 'Otro' };
+export const TYPE_LABELS = { cancion: 'Canción', poema: 'Poema', otro: 'Otro' };
 const SAVE_DELAY = 700;
 
 const state = {
@@ -78,6 +78,10 @@ export function mountNotesView(container, user) {
     },
     (err) => console.error('Error escuchando notas', err),
   );
+}
+
+export function getNotesSnapshot() {
+  return state.notes;
 }
 
 export function unmountNotesView() {

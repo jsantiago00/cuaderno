@@ -5,7 +5,9 @@ import { watchAuth, resolveRedirectSignIn } from './auth.js';
 import { renderLogin } from './views/login.js';
 import { renderMissingConfig } from './views/missing-config.js';
 import { mountAppShell, unmountAppShell } from './views/app-shell.js';
+import { applySettings } from './settings.js';
 
+applySettings();
 registerSW({ immediate: true });
 
 const root = document.getElementById('app');

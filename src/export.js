@@ -1,0 +1,52 @@
+const TYPE_LABELS = { cancion: 'Canción', poema: 'Poema', otro: 'Otro' };
+
+function todayISO() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function timestampToArDate(ts) {
+  const date = ts?.toDate ? ts.toDate() : new Date();
+  return date.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
+function downloadBlob(content, mime, filename) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+export function exportNotesAsText(notes) {
+  const body = notes
+    .map((note) => {
+      const title = note.title?.trim() || 'Sin título';
+      const type = TYPE_LABELS[note.type] || 'Otro';
+      return `${title}\n(${type})\n${'-'.repeat(24)}\n${note.content || ''}`;
+    })
+    .join('\n\n' + '='.repeat(40) + '\n\n');
+  downloadBlob(body, 'text/plain', `cuaderno_${todayISO()}.txt`);
+}
+
+// Formato que espera el importador de Pentagrama (src/components/SongsModal.jsx
+// del repo pentagrama): un array JSON de objetos { id, title, artist, text,
+// created, updated, source }, deduplicados por "source" al importar.
+export function exportNotesForPentagrama(notes) {
+  const songs = notes
+    .filter((n) => n.type === 'cancion')
+    .map((n) => ({
+      id: `cuaderno_${n.id}`,
+      title: n.title?.trim() || 'Sin título',
+      artist: '',
+      text: n.content || '',
+      source: `cuaderno:${n.id}`,
+      created: timestampToArDate(n.createdAt),
+      updated: timestampToArDate(n.updatedAt),
+    }));
+  downloadBlob(JSON.stringify(songs, null, 2), 'application/json', `canciones_para_pentagrama_${todayISO()}.json`);
+  return songs.length;
+}

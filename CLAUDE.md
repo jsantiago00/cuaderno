@@ -40,6 +40,10 @@ No frontend framework: plain JS + Vite, manual DOM rendering (`innerHTML` + `add
 
 **Auth domains**: Firebase's Authentication → Authorized domains list must include every domain the app is actually served from — the default `*.github.io` domain *and*, separately, any custom domain configured for GitHub Pages (e.g. via a `CNAME`). Missing this causes a silent-ish "No se pudo iniciar sesión" failure with no specific error surfaced to the user (see `views/login.js`'s catch block).
 
+**Appearance settings** (`src/settings.js` + `src/palettes.js`): theme (light/dark), color palette, font pairing, and root font size are stored in `localStorage` (not per-account) and applied by overwriting the same 10 CSS custom properties `style.css` already defines on `:root` (`--paper`, `--ink`, `--accent`, etc.) via inline styles set on `document.documentElement` — there are no `[data-palette]`/`[data-theme]` CSS blocks, everything is JS-driven. `applySettings()` runs synchronously at the very top of `main.js`, before any render, so there's no flash of the wrong theme. `views/settings-view.js` renders the "⚙️" modal (opened from `app-shell.js`'s header) with two tabs: Apariencia (theme/palette/font/size) and Exportar.
+
+**Export** (`src/export.js`, driven by the Exportar tab): reads the live notes list via `getNotesSnapshot()` (exported from `notes-view.js`, same module-level `state.notes` the notes view already subscribes to — no separate Firestore read). `exportNotesAsText` downloads a plain `.txt` of the selected notes. `exportNotesForPentagrama` downloads a `.json` matching the exact shape [pentagrama](https://github.com/jsantiago00/pentagrama)'s own "Importar canciones" expects (`{id, title, artist, text, source, created, updated}`, array, deduped by `source`) — pentagrama needed no changes, its importer already existed. Only `type: 'cancion'` notes are included in the Pentagrama export regardless of the panel's type filter/selection.
+
 ## graphify
 
 This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
