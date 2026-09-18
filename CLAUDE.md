@@ -39,3 +39,13 @@ No frontend framework: plain JS + Vite, manual DOM rendering (`innerHTML` + `add
 **Known deploy gotcha**: a fresh repo's auto-created `github-pages` *environment* can have a deployment-branch protection rule that doesn't include `main`, which makes the `deploy` job fail instantly with no runner assigned (empty `steps`, `runner_id: 0`) and no useful job log. Fix in Settings → Environments → `github-pages` → Deployment branches and tags.
 
 **Auth domains**: Firebase's Authentication → Authorized domains list must include every domain the app is actually served from — the default `*.github.io` domain *and*, separately, any custom domain configured for GitHub Pages (e.g. via a `CNAME`). Missing this causes a silent-ish "No se pudo iniciar sesión" failure with no specific error surfaced to the user (see `views/login.js`'s catch block).
+
+## graphify
+
+This project has a knowledge graph at graphify-out/ with god nodes, community structure, and cross-file relationships.
+
+Rules:
+- For codebase questions, first run `graphify query "<question>"` when graphify-out/graph.json exists. Use `graphify path "<A>" "<B>"` for relationships and `graphify explain "<concept>"` for focused concepts. These return a scoped subgraph, usually much smaller than GRAPH_REPORT.md or raw grep output.
+- If graphify-out/wiki/index.md exists, use it for broad navigation instead of raw source browsing.
+- Read graphify-out/GRAPH_REPORT.md only for broad architecture review or when query/path/explain do not surface enough context.
+- After modifying code, run `graphify update .` to keep the graph current (AST-only, no API cost).
