@@ -180,6 +180,11 @@ button {
   color: var(--ink-soft);
 }
 
+.btn-guest {
+  margin-top: 0.75rem;
+  width: 100%;
+}
+
 .boot-loading {
   min-height: 100vh;
   display: flex;

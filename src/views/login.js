@@ -1,4 +1,4 @@
-import { signIn } from '../auth.js';
+import { signIn, signInAsGuest } from '../auth.js';
 
 export function renderLogin(root) {
   root.innerHTML = `
@@ -30,6 +30,8 @@ export function renderLogin(root) {
           Continuar con Google
         </button>
         <p class="login-hint">Usá la misma cuenta en todos tus dispositivos para ver tus escritos en cualquier lado.</p>
+        <button id="guest-signin" class="btn btn-ghost btn-guest">Continuar sin cuenta</button>
+        <p class="login-hint">Tus escritos quedan guardados solo en este dispositivo hasta que inicies sesión con Google.</p>
       </div>
     </div>
   `;
@@ -45,6 +47,18 @@ export function renderLogin(root) {
       btn.disabled = false;
       btn.classList.remove('is-loading');
       alert('No se pudo iniciar sesión. Probá de nuevo.');
+    }
+  });
+
+  const guestBtn = document.getElementById('guest-signin');
+  guestBtn.addEventListener('click', async () => {
+    guestBtn.disabled = true;
+    try {
+      await signInAsGuest();
+    } catch (err) {
+      console.error(err);
+      guestBtn.disabled = false;
+      alert('No se pudo continuar sin cuenta. Probá de nuevo.');
     }
   });
 }
