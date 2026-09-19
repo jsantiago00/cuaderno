@@ -1,4 +1,5 @@
 import { subscribeNotes, createNote, updateNote, deleteNote } from '../notes.js';
+import { subscribeLocalNotes, createLocalNote, updateLocalNote, deleteLocalNote } from '../local-notes.js';
 import { getFormById, buildTemplateContent } from '../forms-data.js';
 import { countLineSyllables } from '../syllables.js';
 
@@ -7,6 +8,7 @@ const SAVE_DELAY = 700;
 
 const state = {
   user: null,
+  mode: 'local', // 'local' (sin cuenta, localStorage) o 'cloud' (Firestore)
   unsubscribe: null,
   notes: [],
   selectedId: null,
@@ -22,6 +24,8 @@ function el(container, selector) {
 
 export function mountNotesView(container, user) {
   state.user = user;
+  state.mode = user ? 'cloud' : 'local';
+  state.container = container;
   state.notes = [];
   state.selectedId = null;
   state.localPatch = null;
@@ -66,18 +70,19 @@ export function mountNotesView(container, user) {
 
   el(container, '#new-note-btn').addEventListener('click', () => handleCreate(container));
 
-  state.unsubscribe = subscribeNotes(
-    user.uid,
-    (notes) => {
-      state.notes = notes;
-      renderList(container);
-      if (state.selectedId && !state.localPatch) {
-        const current = notes.find((n) => n.id === state.selectedId);
-        if (current) renderEditor(container, current);
-      }
-    },
-    (err) => console.error('Error escuchando notas', err),
-  );
+  const onChange = (notes) => {
+    state.notes = notes;
+    renderList(container);
+    if (state.selectedId && !state.localPatch) {
+      const current = notes.find((n) => n.id === state.selectedId);
+      if (current) renderEditor(container, current);
+    }
+  };
+
+  state.unsubscribe =
+    state.mode === 'cloud'
+      ? subscribeNotes(user.uid, onChange, (err) => console.error('Error escuchando notas', err))
+      : subscribeLocalNotes(onChange);
 }
 
 export function unmountNotesView() {
@@ -148,21 +153,38 @@ function selectNote(container, id) {
 }
 
 async function handleCreate(container) {
-  const ref = await createNote(state.user.uid, { title: '', content: '', type: 'otro' });
-  state.selectedId = ref.id;
-  state.localPatch = null;
+  const note = await addNote({ title: '', content: '', type: 'otro' });
+  selectCreatedNote(container, note);
 }
 
 export async function createNoteFromTemplate(form) {
-  if (!state.user) return;
-  const ref = await createNote(state.user.uid, {
+  const note = await addNote({
     title: form.name,
     content: buildTemplateContent(form),
     type: form.id === 'letra-cancion' ? 'cancion' : 'poema',
     formId: form.id,
   });
-  state.selectedId = ref.id;
+  selectCreatedNote(state.container, note);
+}
+
+async function addNote(data) {
+  if (state.mode === 'cloud') {
+    const ref = await createNote(state.user.uid, data);
+    return { id: ref.id, ...data };
+  }
+  return createLocalNote(data);
+}
+
+// Renders the editor right away instead of waiting for the store's onChange:
+// the local store notifies listeners synchronously (unlike Firestore's onSnapshot,
+// which always fires after this function has already set state.selectedId), so
+// waiting on it here would race and leave the editor pane empty.
+function selectCreatedNote(container, note) {
+  state.selectedId = note.id;
   state.localPatch = null;
+  if (!state.notes.some((n) => n.id === note.id)) state.notes = [note, ...state.notes];
+  renderEditor(container, note);
+  renderList(container);
 }
 
 function renderEditor(container, note) {
@@ -214,7 +236,11 @@ function renderEditor(container, note) {
 
   el(pane, '#delete-note').addEventListener('click', async () => {
     if (!confirm('¿Eliminar este escrito? No se puede deshacer.')) return;
-    await deleteNote(state.user.uid, note.id);
+    if (state.mode === 'cloud') {
+      await deleteNote(state.user.uid, note.id);
+    } else {
+      await deleteLocalNote(note.id);
+    }
     state.selectedId = null;
     state.localPatch = null;
     pane.innerHTML = `<div class="editor-empty"><p>Elegí un escrito de la lista o creá uno nuevo.</p></div>`;
@@ -251,9 +277,10 @@ function flushSave(statusEl) {
     clearTimeout(state.saveTimer);
     state.saveTimer = null;
   }
-  if (!state.localPatch || !state.user) return;
+  if (!state.localPatch) return;
   const { id, ...changes } = state.localPatch;
-  updateNote(state.user.uid, id, changes)
+  const save = state.mode === 'cloud' ? updateNote(state.user.uid, id, changes) : updateLocalNote(id, changes);
+  save
     .then(() => {
       if (state.localPatch && state.localPatch.id === id) state.localPatch = null;
       if (statusEl) statusEl.textContent = 'Guardado';

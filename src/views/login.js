@@ -1,6 +1,6 @@
 import { signIn } from '../auth.js';
 
-export function renderLogin(root) {
+export function renderLogin(root, { onContinueLocal } = {}) {
   root.innerHTML = `
     <div class="login-screen">
       <div class="login-card">
@@ -29,7 +29,8 @@ export function renderLogin(root) {
           </svg>
           Continuar con Google
         </button>
-        <p class="login-hint">Usá la misma cuenta en todos tus dispositivos para ver tus escritos en cualquier lado.</p>
+        <button id="continue-local" class="btn btn-ghost btn-block">Usar sin cuenta</button>
+        <p class="login-hint">Sin cuenta, tus escritos se guardan solo en este dispositivo. Iniciá sesión cuando quieras para sincronizarlos y verlos en cualquier lado.</p>
       </div>
     </div>
   `;
@@ -47,4 +48,9 @@ export function renderLogin(root) {
       alert('No se pudo iniciar sesión. Probá de nuevo.');
     }
   });
+
+  const localBtn = document.getElementById('continue-local');
+  if (onContinueLocal) {
+    localBtn.addEventListener('click', () => onContinueLocal());
+  }
 }

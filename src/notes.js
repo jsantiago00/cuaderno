@@ -25,14 +25,14 @@ export function subscribeNotes(uid, onChange, onError) {
   );
 }
 
-export function createNote(uid, { title = '', content = '', type = 'otro', formId = null } = {}) {
+export function createNote(uid, { title = '', content = '', type = 'otro', formId = null, createdAt, updatedAt } = {}) {
   return addDoc(notesRef(uid), {
     title,
     content,
     type,
     formId,
-    createdAt: serverTimestamp(),
-    updatedAt: serverTimestamp(),
+    createdAt: createdAt || serverTimestamp(),
+    updatedAt: updatedAt || serverTimestamp(),
   });
 }
 

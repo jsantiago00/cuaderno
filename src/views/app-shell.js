@@ -1,4 +1,4 @@
-import { signOutUser } from '../auth.js';
+import { signIn, signOutUser } from '../auth.js';
 import { mountNotesView, unmountNotesView, createNoteFromTemplate } from './notes-view.js';
 import { mountLearnView, unmountLearnView } from './learn-view.js';
 
@@ -21,8 +21,14 @@ export function mountAppShell(root, user) {
           <button class="tab-btn" data-tab="learn" role="tab" aria-selected="false">Aprender formas</button>
         </nav>
         <div class="user-menu">
-          ${user.photoURL ? `<img class="avatar" src="${user.photoURL}" alt="" referrerpolicy="no-referrer" />` : `<span class="avatar avatar-fallback">${(user.displayName || user.email || '?')[0].toUpperCase()}</span>`}
-          <button id="logout-btn" class="btn btn-ghost" title="Cerrar sesión">Salir</button>
+          ${
+            user
+              ? user.photoURL
+                ? `<img class="avatar" src="${user.photoURL}" alt="" referrerpolicy="no-referrer" />`
+                : `<span class="avatar avatar-fallback">${(user.displayName || user.email || '?')[0].toUpperCase()}</span>`
+              : ''
+          }
+          <button id="auth-btn" class="btn btn-ghost" title="${user ? 'Cerrar sesión' : 'Iniciar sesión para sincronizar tus escritos'}">${user ? 'Salir' : 'Iniciar sesión'}</button>
         </div>
       </header>
       <main class="app-main">
@@ -44,8 +50,15 @@ export function mountAppShell(root, user) {
     btn.addEventListener('click', () => switchTab(btn.dataset.tab));
   });
 
-  document.getElementById('logout-btn').addEventListener('click', () => {
-    signOutUser();
+  document.getElementById('auth-btn').addEventListener('click', () => {
+    if (user) {
+      signOutUser();
+    } else {
+      signIn().catch((err) => {
+        console.error(err);
+        alert('No se pudo iniciar sesión. Probá de nuevo.');
+      });
+    }
   });
 }
 
