@@ -368,6 +368,7 @@ button {
 
 .note-card {
   width: 100%;
+  min-width: 0;
   text-align: left;
   background: var(--paper);
   border: 1px solid var(--line);
@@ -392,6 +393,7 @@ button {
   align-items: center;
   justify-content: space-between;
   gap: 0.4rem;
+  min-width: 0;
 }
 .note-card-title {
   font-weight: 700;
@@ -400,6 +402,7 @@ button {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  min-width: 0;
 }
 .note-item-type {
   font-size: 0.68rem;
