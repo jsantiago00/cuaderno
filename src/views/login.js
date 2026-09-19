@@ -1,6 +1,6 @@
-import { signIn, signInAsGuest } from '../auth.js';
+import { signIn } from '../auth.js';
 
-export function renderLogin(root) {
+export function renderLogin(root, { onContinueLocal } = {}) {
   root.innerHTML = `
     <div class="login-screen">
       <div class="login-card">
@@ -51,14 +51,7 @@ export function renderLogin(root) {
   });
 
   const guestBtn = document.getElementById('guest-signin');
-  guestBtn.addEventListener('click', async () => {
-    guestBtn.disabled = true;
-    try {
-      await signInAsGuest();
-    } catch (err) {
-      console.error(err);
-      guestBtn.disabled = false;
-      alert('No se pudo continuar sin cuenta. Probá de nuevo.');
-    }
-  });
+  if (onContinueLocal) {
+    guestBtn.addEventListener('click', () => onContinueLocal());
+  }
 }

@@ -3,9 +3,6 @@ import {
   signInWithPopup,
   signInWithRedirect,
   getRedirectResult,
-  signInAnonymously,
-  linkWithPopup,
-  linkWithRedirect,
   signOut,
 } from 'firebase/auth';
 import { auth, googleProvider } from './firebase.js';
@@ -28,22 +25,6 @@ export async function signIn() {
     return null;
   }
   return signInWithPopup(auth, googleProvider);
-}
-
-export function signInAsGuest() {
-  // Cuenta anónima: mismo uid en Firestore que una cuenta con Google, así que
-  // notes.js funciona igual. No sincroniza entre dispositivos hasta que se
-  // vincule con Google (linkGoogleAccount) - es un uid distinto en cada uno.
-  return signInAnonymously(auth);
-}
-
-export async function linkGoogleAccount() {
-  if (!auth.currentUser) return null;
-  if (isStandalone()) {
-    await linkWithRedirect(auth.currentUser, googleProvider);
-    return null;
-  }
-  return linkWithPopup(auth.currentUser, googleProvider);
 }
 
 export async function resolveRedirectSignIn() {

@@ -6,6 +6,8 @@ import { renderLogin } from './views/login.js';
 import { renderMissingConfig } from './views/missing-config.js';
 import { mountAppShell, unmountAppShell } from './views/app-shell.js';
 import { applySettings } from './settings.js';
+import { hasLocalNotes } from './local-notes.js';
+import { syncLocalNotesToCloud } from './sync.js';
 
 applySettings();
 registerSW({ immediate: true });
@@ -25,12 +27,20 @@ async function bootstrap() {
   renderLoading();
   await resolveRedirectSignIn();
 
-  watchAuth((user) => {
+  watchAuth(async (user) => {
     unmountAppShell();
     if (user) {
+      if (hasLocalNotes()) {
+        renderLoading();
+        try {
+          await syncLocalNotesToCloud(user.uid);
+        } catch (err) {
+          console.error('Error sincronizando notas locales', err);
+        }
+      }
       mountAppShell(root, user);
     } else {
-      renderLogin(root);
+      renderLogin(root, { onContinueLocal: () => mountAppShell(root, null) });
     }
   });
 }

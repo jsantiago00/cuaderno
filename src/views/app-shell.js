@@ -1,4 +1,4 @@
-import { signOutUser, linkGoogleAccount } from '../auth.js';
+import { signIn, signOutUser } from '../auth.js';
 import { openSettingsModal } from './settings-view.js';
 import { mountNotesView, unmountNotesView, createNoteFromTemplate } from './notes-view.js';
 import { mountLearnView, unmountLearnView } from './learn-view.js';
@@ -23,9 +23,14 @@ export function mountAppShell(root, user) {
         </nav>
         <div class="user-menu">
           <button id="settings-btn" class="btn btn-ghost icon-btn" title="Configuración" aria-label="Configuración">⚙️</button>
-          ${user.photoURL ? `<img class="avatar" src="${user.photoURL}" alt="" referrerpolicy="no-referrer" />` : `<span class="avatar avatar-fallback">${(user.displayName || user.email || '?')[0].toUpperCase()}</span>`}
-          ${user.isAnonymous ? `<button id="link-google-btn" class="btn btn-ghost" title="Vincular con Google para sincronizar">Vincular con Google</button>` : ''}
-          <button id="logout-btn" class="btn btn-ghost" title="Cerrar sesión">Salir</button>
+          ${
+            user
+              ? user.photoURL
+                ? `<img class="avatar" src="${user.photoURL}" alt="" referrerpolicy="no-referrer" />`
+                : `<span class="avatar avatar-fallback">${(user.displayName || user.email || '?')[0].toUpperCase()}</span>`
+              : ''
+          }
+          <button id="auth-btn" class="btn btn-ghost" title="${user ? 'Cerrar sesión' : 'Iniciar sesión para sincronizar tus escritos'}">${user ? 'Salir' : 'Iniciar sesión'}</button>
         </div>
       </header>
       <main class="app-main">
@@ -51,27 +56,14 @@ export function mountAppShell(root, user) {
     openSettingsModal();
   });
 
-  document.getElementById('logout-btn').addEventListener('click', () => {
-    if (user.isAnonymous) {
-      const ok = confirm('Estás sin cuenta: si salís vas a perder el acceso a estos escritos en este dispositivo. ¿Salir igual?');
-      if (!ok) return;
-    }
-    signOutUser();
-  });
-
-  const linkBtn = document.getElementById('link-google-btn');
-  linkBtn?.addEventListener('click', async () => {
-    linkBtn.disabled = true;
-    try {
-      await linkGoogleAccount();
-    } catch (err) {
-      console.error(err);
-      linkBtn.disabled = false;
-      if (err?.code === 'auth/credential-already-in-use') {
-        alert('Esa cuenta de Google ya tiene su propio cuaderno. Cerrá sesión acá e iniciá sesión con Google directamente para ver esas notas (las de este dispositivo como invitado no se van a mezclar).');
-      } else {
-        alert('No se pudo vincular con Google. Probá de nuevo.');
-      }
+  document.getElementById('auth-btn').addEventListener('click', () => {
+    if (user) {
+      signOutUser();
+    } else {
+      signIn().catch((err) => {
+        console.error(err);
+        alert('No se pudo iniciar sesión. Probá de nuevo.');
+      });
     }
   });
 }

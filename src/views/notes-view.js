@@ -1,4 +1,5 @@
 import { subscribeNotes, createNote, updateNote, deleteNote } from '../notes.js';
+import { subscribeLocalNotes, createLocalNote, updateLocalNote, deleteLocalNote } from '../local-notes.js';
 import { getFormById, buildTemplateContent } from '../forms-data.js';
 import { countLineSyllables } from '../syllables.js';
 
@@ -8,6 +9,8 @@ const SAVE_DELAY = 700;
 
 const state = {
   user: null,
+  mode: 'local', // 'local' (sin cuenta, localStorage) o 'cloud' (Firestore)
+  container: null,
   unsubscribe: null,
   notes: [],
   selectedId: null,
@@ -24,6 +27,8 @@ function el(container, selector) {
 
 export function mountNotesView(container, user) {
   state.user = user;
+  state.mode = user ? 'cloud' : 'local';
+  state.container = container;
   state.notes = [];
   state.selectedId = null;
   state.localPatch = null;
@@ -77,18 +82,19 @@ export function mountNotesView(container, user) {
 
   el(container, '#new-note-fab').addEventListener('click', () => handleCreate(container));
 
-  state.unsubscribe = subscribeNotes(
-    user.uid,
-    (notes) => {
-      state.notes = notes;
-      renderGrid(container);
-      if (state.selectedId && !state.localPatch) {
-        const current = notes.find((n) => n.id === state.selectedId);
-        if (current) renderEditor(container, current);
-      }
-    },
-    (err) => console.error('Error escuchando notas', err),
-  );
+  const onChange = (notes) => {
+    state.notes = notes;
+    renderGrid(container);
+    if (state.selectedId && !state.localPatch) {
+      const current = notes.find((n) => n.id === state.selectedId);
+      if (current) renderEditor(container, current);
+    }
+  };
+
+  state.unsubscribe =
+    state.mode === 'cloud'
+      ? subscribeNotes(user.uid, onChange, (err) => console.error('Error escuchando notas', err))
+      : subscribeLocalNotes(onChange);
 }
 
 export function getNotesSnapshot() {
@@ -106,13 +112,17 @@ export function unmountNotesView() {
 }
 
 function timestampMs(ts) {
-  // Un serverTimestamp() recién escrito llega null hasta que el server lo
-  // confirma - lo tratamos como "ahora" para que la nota no salte al final
-  // de la lista durante ese instante.
+  // Las notas locales guardan epoch ms directo; las de Firestore, un Timestamp
+  // (o null hasta que el servidor confirma un serverTimestamp() recién escrito,
+  // que tratamos como "ahora" para que la nota no salte al final de la lista).
+  if (typeof ts === 'number') return ts;
   return ts?.toMillis ? ts.toMillis() : Date.now();
 }
 
 function formatDate(ts) {
+  if (typeof ts === 'number') {
+    return new Date(ts).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+  }
   if (!ts?.toDate) return 'Guardando...';
   return ts.toDate().toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
@@ -178,21 +188,39 @@ function selectNote(container, id) {
 }
 
 async function handleCreate(container) {
-  const ref = await createNote(state.user.uid, { title: '', content: '', type: 'otro' });
-  state.selectedId = ref.id;
-  state.localPatch = null;
+  const note = await addNote({ title: '', content: '', type: 'otro' });
+  selectCreatedNote(container, note);
 }
 
 export async function createNoteFromTemplate(form) {
-  if (!state.user) return;
-  const ref = await createNote(state.user.uid, {
+  const note = await addNote({
     title: form.name,
     content: buildTemplateContent(form),
     type: form.id === 'letra-cancion' ? 'cancion' : 'poema',
     formId: form.id,
   });
-  state.selectedId = ref.id;
+  selectCreatedNote(state.container, note);
+}
+
+async function addNote(data) {
+  if (state.mode === 'cloud') {
+    const ref = await createNote(state.user.uid, data);
+    return { id: ref.id, ...data };
+  }
+  return createLocalNote(data);
+}
+
+// Renderiza el editor directamente en vez de esperar el onChange del store: el
+// store local notifica a sus listeners de forma síncrona (a diferencia de
+// Firestore, donde onSnapshot siempre llega después de que ya seteamos
+// state.selectedId), así que esperarlo generaría una carrera y el editor
+// quedaría vacío.
+function selectCreatedNote(container, note) {
+  state.selectedId = note.id;
   state.localPatch = null;
+  if (!state.notes.some((n) => n.id === note.id)) state.notes = [note, ...state.notes];
+  renderEditor(container, note);
+  renderGrid(container);
 }
 
 function renderEditor(container, note) {
@@ -253,7 +281,11 @@ function renderEditor(container, note) {
 
   el(pane, '#delete-note').addEventListener('click', async () => {
     if (!confirm('¿Eliminar este escrito? No se puede deshacer.')) return;
-    await deleteNote(state.user.uid, note.id);
+    if (state.mode === 'cloud') {
+      await deleteNote(state.user.uid, note.id);
+    } else {
+      await deleteLocalNote(note.id);
+    }
     state.selectedId = null;
     state.localPatch = null;
     pane.innerHTML = `<div class="editor-empty"><p>Elegí un escrito de la lista o creá uno nuevo.</p></div>`;
@@ -288,9 +320,10 @@ function flushSave(statusEl) {
     clearTimeout(state.saveTimer);
     state.saveTimer = null;
   }
-  if (!state.localPatch || !state.user) return;
+  if (!state.localPatch) return;
   const { id, ...changes } = state.localPatch;
-  updateNote(state.user.uid, id, changes)
+  const save = state.mode === 'cloud' ? updateNote(state.user.uid, id, changes) : updateLocalNote(id, changes);
+  save
     .then(() => {
       if (state.localPatch && state.localPatch.id === id) state.localPatch = null;
       if (statusEl) statusEl.textContent = 'Guardado';
