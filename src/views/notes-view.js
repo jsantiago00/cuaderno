@@ -6,6 +6,7 @@ import { countLineSyllables } from '../syllables.js';
 export const TYPE_LABELS = { cancion: 'Canción', poema: 'Poema', otro: 'Otro' };
 const TYPE_ICONS = { cancion: '🎵', poema: '📝', otro: '📄' };
 const SAVE_DELAY = 700;
+const MAX_NOTES_PER_USER = 100;
 
 const state = {
   user: null,
@@ -189,7 +190,7 @@ function selectNote(container, id) {
 
 async function handleCreate(container) {
   const note = await addNote({ title: '', content: '', type: 'otro' });
-  selectCreatedNote(container, note);
+  if (note) selectCreatedNote(container, note);
 }
 
 export async function createNoteFromTemplate(form) {
@@ -199,10 +200,14 @@ export async function createNoteFromTemplate(form) {
     type: form.id === 'letra-cancion' ? 'cancion' : 'poema',
     formId: form.id,
   });
-  selectCreatedNote(state.container, note);
+  if (note) selectCreatedNote(state.container, note);
 }
 
 async function addNote(data) {
+  if (state.notes.length >= MAX_NOTES_PER_USER) {
+    alert(`Llegaste al límite de ${MAX_NOTES_PER_USER} escritos. Borrá alguno viejo para poder crear uno nuevo.`);
+    return null;
+  }
   if (state.mode === 'cloud') {
     const ref = await createNote(state.user.uid, data);
     return { id: ref.id, ...data };
