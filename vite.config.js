@@ -1,22 +1,22 @@
 import { defineConfig } from 'vite';
 import { VitePWA } from 'vite-plugin-pwa';
 
-// Publicado en GitHub Pages como sitio de proyecto: https://<usuario>.github.io/cuaderno/
+// Publicado en GitHub Pages como sitio de proyecto: https://<usuario>.github.io/soltarte/
 export default defineConfig({
-  base: '/cuaderno/',
+  base: '/soltarte/',
   plugins: [
     VitePWA({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'favicon.ico', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Cuaderno',
-        short_name: 'Cuaderno',
+        name: 'SoltArte',
+        short_name: 'SoltArte',
         description: 'Tu cuaderno personal para canciones, poemas y letras.',
         theme_color: '#5b4636',
         background_color: '#faf6ef',
         display: 'standalone',
-        start_url: '/cuaderno/',
-        scope: '/cuaderno/',
+        start_url: '/soltarte/',
+        scope: '/soltarte/',
         icons: [
           { src: 'pwa-64x64.png', sizes: '64x64', type: 'image/png' },
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },

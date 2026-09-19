@@ -1,5 +1,18 @@
-const STORAGE_KEY = 'cuaderno_local_notes';
+const STORAGE_KEY = 'soltarte_local_notes';
+const LEGACY_STORAGE_KEY = 'cuaderno_local_notes'; // la app se llamaba Cuaderno antes de renombrarse
 const listeners = new Set();
+
+// Corre una vez al cargar el módulo: si hay notas guardadas bajo la clave
+// vieja y todavía no se migraron, las copia para no perder lo ya escrito.
+(function migrateLegacyStorageKey() {
+  try {
+    if (localStorage.getItem(STORAGE_KEY) !== null) return;
+    const legacy = localStorage.getItem(LEGACY_STORAGE_KEY);
+    if (legacy !== null) localStorage.setItem(STORAGE_KEY, legacy);
+  } catch (err) {
+    console.error('Error migrando notas locales', err);
+  }
+})();
 
 function readAll() {
   try {

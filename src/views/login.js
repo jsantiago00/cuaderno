@@ -13,7 +13,7 @@ export function renderLogin(root, { onContinueLocal } = {}) {
             <path d="M300 380 L392 152 C400 132 424 128 440 140 C456 152 458 176 444 194 L360 380 Z" fill="#c1653a"/>
           </svg>
         </div>
-        <h1>Cuaderno</h1>
+        <h1>SoltArte</h1>
         <p class="login-tagline">Un lugar para tus canciones, poemas y todo lo que se te ocurra escribir.</p>
         <ul class="login-features">
           <li>Se sincroniza sola entre tu celular y tu computadora</li>

@@ -1,4 +1,4 @@
-# Cuaderno
+# SoltArte
 
 Un cuaderno personal para canciones, poemas y escritos varios. Se sincroniza
 entre dispositivos con la misma cuenta, funciona offline como PWA instalable,
@@ -57,7 +57,7 @@ publica la app en GitHub Pages cada vez que se hace push a `main`.
 1. En **Settings → Secrets and variables → Actions → New repository secret**, cargá los mismos 6 valores de tu `.env` como secrets (con los mismos nombres: `VITE_FIREBASE_API_KEY`, etc.). El build de GitHub Actions los necesita para compilar la app con tus credenciales.
 2. En **Settings → Pages → Build and deployment → Source**, elegí **GitHub Actions**.
 3. Mergeá tus cambios a `main` (o corré el workflow manualmente desde la pestaña *Actions*).
-4. Tu app va a quedar publicada en `https://<tu-usuario>.github.io/cuaderno/`.
+4. Tu app va a quedar publicada en `https://<tu-usuario>.github.io/soltarte/`.
 
 Si cambiás el nombre del repositorio, actualizá el valor de `base` en
 `vite.config.js` (`base: '/nombre-del-repo/'`) para que las rutas de la PWA

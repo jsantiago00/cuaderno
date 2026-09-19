@@ -15,7 +15,7 @@ export function mountAppShell(root, user) {
             <rect x="120" y="96" width="272" height="336" rx="18" fill="#faf6ef"/>
             <path d="M300 380 L392 152 C400 132 424 128 440 140 C456 152 458 176 444 194 L360 380 Z" fill="#c1653a"/>
           </svg>
-          <span>Cuaderno</span>
+          <span>SoltArte</span>
         </div>
         <nav class="tabs" role="tablist">
           <button class="tab-btn is-active" data-tab="notes" role="tab" aria-selected="true">Mis escritos</button>

@@ -1,9 +1,29 @@
 import { PALETTES, FONTS, FONT_SIZES } from './palettes.js';
 
-const THEME_KEY = 'cuaderno_theme';
-const PALETTE_KEY = 'cuaderno_palette';
-const FONT_KEY = 'cuaderno_font';
-const FONT_SIZE_KEY = 'cuaderno_font_size';
+const THEME_KEY = 'soltarte_theme';
+const PALETTE_KEY = 'soltarte_palette';
+const FONT_KEY = 'soltarte_font';
+const FONT_SIZE_KEY = 'soltarte_font_size';
+
+// La app se llamaba Cuaderno antes de renombrarse - migra las preferencias
+// guardadas bajo esas claves viejas para no resetear el tema del usuario.
+(function migrateLegacyKeys() {
+  const pairs = [
+    [THEME_KEY, 'cuaderno_theme'],
+    [PALETTE_KEY, 'cuaderno_palette'],
+    [FONT_KEY, 'cuaderno_font'],
+    [FONT_SIZE_KEY, 'cuaderno_font_size'],
+  ];
+  try {
+    for (const [key, legacyKey] of pairs) {
+      if (localStorage.getItem(key) !== null) continue;
+      const legacy = localStorage.getItem(legacyKey);
+      if (legacy !== null) localStorage.setItem(key, legacy);
+    }
+  } catch (err) {
+    console.error('Error migrando preferencias', err);
+  }
+})();
 
 function systemPrefersDark() {
   return window.matchMedia?.('(prefers-color-scheme: dark)').matches ?? false;

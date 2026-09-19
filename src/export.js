@@ -29,12 +29,15 @@ export function exportNotesAsText(notes) {
       return `${title}\n(${type})\n${'-'.repeat(24)}\n${note.content || ''}`;
     })
     .join('\n\n' + '='.repeat(40) + '\n\n');
-  downloadBlob(body, 'text/plain', `cuaderno_${todayISO()}.txt`);
+  downloadBlob(body, 'text/plain', `soltarte_${todayISO()}.txt`);
 }
 
 // Formato que espera el importador de Pentagrama (src/components/SongsModal.jsx
 // del repo pentagrama): un array JSON de objetos { id, title, artist, text,
 // created, updated, source }, deduplicados por "source" al importar.
+// El prefijo "cuaderno" en id/source queda igual a propósito (era el nombre de
+// esta app): es la clave que Pentagrama usa para no duplicar canciones ya
+// importadas - cambiarlo re-importaría como nuevas las que ya se pasaron antes.
 export function exportNotesForPentagrama(notes) {
   const songs = notes
     .filter((n) => n.type === 'cancion')
